@@ -1,6 +1,7 @@
 // index.js
 
 const express = require('express');
+const cors = require('cors')
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -14,6 +15,14 @@ mongoose.connect(connectionString);
 
 // Middleware to parse JSON requests
 app.use(express.json());
+const corsOptions = {
+  origin: 'http://localhost:5173/*',
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  credentials: true,
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors());
 
 //end points
 const User = require('./models/User');
@@ -47,8 +56,12 @@ app.post('/login', async (req, res) => {
 
     // Check if the user exists and verify the password
     if (user && await bcrypt.compare(password, user.password)) {
-      // Generate a JWT token
-      const token = jwt.sign({ userId: user._id, username: user.username }, secretKey, { expiresIn: '1h' });
+      // Generate a JWT token with ISO-8859-1 (latin1) encoding
+      const token = jwt.sign(
+        { userId: user._id, username: user.username },
+        secretKey,
+        { expiresIn: '1h', encoding: 'latin1' } // Set encoding to latin1
+      );
 
       res.json({ token });
     } else {
@@ -59,6 +72,7 @@ app.post('/login', async (req, res) => {
   }
 });
 
+
 //Todo endpoints
 
 const Todo = require('./models/Todo');
@@ -66,7 +80,7 @@ const Todo = require('./models/Todo');
 // Middleware to authenticate requests
 const authenticateUser = (req, res, next) => {
   const token = req.headers.authorization;
-
+  console.log(req.headers.authorization)
   if (!token) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -84,6 +98,7 @@ const authenticateUser = (req, res, next) => {
 // Create Todo
 app.post('/todos', authenticateUser, async (req, res) => {
   try {
+    
     const { title, description } = req.body;
     const user = req.userId;
 
@@ -99,6 +114,8 @@ app.post('/todos', authenticateUser, async (req, res) => {
 // Read Todos
 app.get('/todos', authenticateUser, async (req, res) => {
   try {
+    console.log(req.headers.authorization)
+    console.log(req.body)
     const user = req.userId;
     const todos = await Todo.find({ user });
 
